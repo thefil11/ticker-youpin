@@ -121,11 +121,14 @@
       <h2>Chave de API</h2>
       <label for="apiKeyInput">Chave da steamwebapi.com</label>
       <input type="password" id="apiKeyInput" placeholder="cole sua chave aqui" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <label for="cs2shKeyInput" style="margin-top:14px;">Chave da cs2.sh (opcional, preço mais exato)</label>
+      <input type="password" id="cs2shKeyInput" placeholder="cole sua chave aqui" autocomplete="off" autocapitalize="off" spellcheck="false">
       <div class="row">
-        <button class="primary" id="saveKeyBtn">Salvar chave</button>
+        <button class="primary" id="saveKeyBtn">Salvar chave(s)</button>
       </div>
       <div class="hint">
-        Crie uma conta grátis em <a href="https://www.steamwebapi.com/dashboard" target="_blank">steamwebapi.com/dashboard</a> (login com Steam) e copie sua chave de API do painel. Ela fica salva só neste app, no seu iPhone.
+        Crie uma conta grátis em <a href="https://www.steamwebapi.com/dashboard" target="_blank">steamwebapi.com/dashboard</a> (login com Steam) e copie sua chave de API do painel. Ela fica salva só neste app, no seu iPhone.<br><br>
+        A chave da cs2.sh é opcional — deixa vazio se não tiver. Ela dá preço do Youpin por fase de Doppler/Gamma/Case Hardened, mais preciso e atualizado com mais frequência.
       </div>
     </div>
 
@@ -137,7 +140,7 @@
         <button class="primary" id="fetchBtn">Consultar preços</button>
       </div>
       <div id="loadingRow"></div>
-      <button class="link-btn" id="changeKeyBtn">trocar chave de API</button>
+      <button class="link-btn" id="changeKeyBtn">trocar chave(s) de API</button>
     </div>
 
     <div id="errorBox"></div>
@@ -147,12 +150,15 @@
 
 <script>
 const STORAGE_KEY = 'swa_api_key';
+const CS2SH_KEY = 'cs2sh_api_key';
 let apiKey = null;
+let cs2shKey = null;
 let rates = { BRL: null, CNY: null }; // quanto vale 1 USD
 
 const setupPanel = document.getElementById('setupPanel');
 const mainPanel = document.getElementById('mainPanel');
 const apiKeyInput = document.getElementById('apiKeyInput');
+const cs2shKeyInput = document.getElementById('cs2shKeyInput');
 const tradelinkInput = document.getElementById('tradelinkInput');
 const errorBox = document.getElementById('errorBox');
 const resultsPanel = document.getElementById('resultsPanel');
@@ -166,6 +172,8 @@ function clearError(){ errorBox.innerHTML = ''; }
 async function init(){
   try{
     const val = localStorage.getItem(STORAGE_KEY);
+    const val2 = localStorage.getItem(CS2SH_KEY);
+    if(val2) cs2shKey = val2;
     if(val){
       apiKey = val;
       mainPanel.style.display = 'block';
@@ -180,10 +188,12 @@ init();
 
 document.getElementById('saveKeyBtn').onclick = async () => {
   const val = apiKeyInput.value.trim();
+  const val2 = cs2shKeyInput.value.trim();
   if(!val){ showError('Cole sua chave de API antes de salvar.'); return; }
   clearError();
   try{
     localStorage.setItem(STORAGE_KEY, val);
+    if(val2){ localStorage.setItem(CS2SH_KEY, val2); cs2shKey = val2; }
     apiKey = val;
     setupPanel.style.display = 'none';
     mainPanel.style.display = 'block';
@@ -267,6 +277,46 @@ function formatMulti(usd){
   return html;
 }
 
+function normalizePhaseCode(phase){
+  if(!phase) return null;
+  const p = phase.toLowerCase().replace(/\s+/g, '');
+  if(p.includes('phase1')) return 'p1';
+  if(p.includes('phase2')) return 'p2';
+  if(p.includes('phase3')) return 'p3';
+  if(p.includes('phase4')) return 'p4';
+  if(p.includes('ruby')) return 'ruby';
+  if(p.includes('sapphire')) return 'sapphire';
+  if(p.includes('blackpearl')) return 'blackpearl';
+  if(p.includes('emerald')) return 'emerald';
+  return null;
+}
+
+async function fetchCS2SHPrices(names){
+  const uniqueNames = [...new Set(names)];
+  if(uniqueNames.length === 0) return {};
+  const chunks = [];
+  for(let i=0; i<uniqueNames.length; i+=100){
+    chunks.push(uniqueNames.slice(i, i+100));
+  }
+  const merged = {};
+  for(const chunk of chunks){
+    const res = await fetch('https://api.cs2.sh/v1/prices/latest', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${cs2shKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ items: chunk, sources: ['youpin'] }),
+    });
+    if(!res.ok){
+      throw new Error(`cs2.sh respondeu com erro (${res.status}). Confira a chave.`);
+    }
+    const data = await res.json();
+    Object.assign(merged, data.items || {});
+  }
+  return merged;
+}
+
 async function fetchInventory(steamId64){
   const url = `https://www.steamwebapi.com/steam/api/inventory?steam_id=${steamId64}&game=cs2&key=${encodeURIComponent(apiKey)}&with_prices=true&markets=youpin&with_phase_price=true`;
   const res = await fetch(url);
@@ -304,6 +354,34 @@ document.getElementById('fetchBtn').onclick = async () => {
     ]);
     loadingRow.innerHTML = '';
     renderResults(items);
+
+    if(cs2shKey){
+      loadingRow.innerHTML = '<div class="loading"><div class="spinner"></div> Refinando preços no cs2.sh...</div>';
+      try{
+        const names = currentItems.map(p => p.name);
+        const cs2shData = await fetchCS2SHPrices(names);
+        currentItems.forEach(p => {
+          const entry = cs2shData[p.name];
+          if(!entry) return;
+          const phaseCode = normalizePhaseCode(p.phase);
+          let ask = null;
+          if(phaseCode && entry.variants && entry.variants[phaseCode] && entry.variants[phaseCode].youpin){
+            ask = entry.variants[phaseCode].youpin.ask;
+          } else if(entry.youpin){
+            ask = entry.youpin.ask;
+          }
+          if(typeof ask === 'number'){
+            p.price = ask;
+            p.source = phaseCode ? `Youpin (cs2.sh, ${p.phase})` : 'Youpin (cs2.sh)';
+          }
+        });
+        loadingRow.innerHTML = '';
+        drawResults();
+      } catch(e){
+        loadingRow.innerHTML = '';
+        showError('Preço da steamwebapi mantido — ' + (e.message || 'cs2.sh falhou.'));
+      }
+    }
   } catch(e){
     loadingRow.innerHTML = '';
     showError(e.message || 'Algo deu errado ao buscar os preços.');
