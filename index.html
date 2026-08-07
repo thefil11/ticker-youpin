@@ -159,9 +159,9 @@ function clearError(){ errorBox.innerHTML = ''; }
 
 async function init(){
   try{
-    const res = await window.storage.get(STORAGE_KEY, false);
-    if(res && res.value){
-      apiKey = res.value;
+    const val = localStorage.getItem(STORAGE_KEY);
+    if(val){
+      apiKey = val;
       mainPanel.style.display = 'block';
     } else {
       setupPanel.style.display = 'block';
@@ -177,7 +177,7 @@ document.getElementById('saveKeyBtn').onclick = async () => {
   if(!val){ showError('Cole sua chave de API antes de salvar.'); return; }
   clearError();
   try{
-    await window.storage.set(STORAGE_KEY, val, false);
+    localStorage.setItem(STORAGE_KEY, val);
     apiKey = val;
     setupPanel.style.display = 'none';
     mainPanel.style.display = 'block';
