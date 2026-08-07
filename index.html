@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ticker — Preços Youpin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0b0d10;
+    --panel: #14171c;
+    --panel-2: #1a1e24;
+    --line: #262b32;
+    --text: #e8ebef;
+    --muted: #7d8590;
+    --gold: #d4af5a;
+    --blue: #5b8fd9;
+    --purple: #9a6fd9;
+    --pink: #d968b0;
+    --red: #d9544f;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{margin:0; padding:0; background:var(--bg); color:var(--text); font-family:'Inter',sans-serif;
+    min-height:100vh; min-height:100dvh;}
+  body{padding-bottom: max(24px, env(safe-area-inset-bottom));}
+
+  .topbar{
+    padding: calc(env(safe-area-inset-top) + 18px) 20px 14px;
+    border-bottom: 1px solid var(--line);
+    position: sticky; top:0; background: rgba(11,13,16,0.92); backdrop-filter: blur(8px);
+    z-index: 10;
+  }
+  .brand{
+    font-family:'Chakra Petch', sans-serif; font-weight:700; font-size:20px; letter-spacing:0.02em;
+    display:flex; align-items:center; gap:8px;
+  }
+  .brand .dot{width:8px; height:8px; border-radius:50%; background:var(--gold); box-shadow:0 0 8px var(--gold);}
+  .brand small{font-family:'IBM Plex Mono',monospace; font-weight:400; font-size:11px; color:var(--muted); letter-spacing:0.08em;}
+
+  .wrap{max-width:520px; margin:0 auto; padding: 18px 16px 40px;}
+
+  .panel{
+    background: var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px;
+    margin-bottom:16px;
+  }
+  .panel h2{
+    font-family:'Chakra Petch',sans-serif; font-size:14px; text-transform:uppercase; letter-spacing:0.08em;
+    color: var(--muted); margin: 0 0 12px;
+  }
+  label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px; font-family:'IBM Plex Mono',monospace;}
+  input[type=text], input[type=password]{
+    width:100%; background:var(--panel-2); border:1px solid var(--line); border-radius:9px;
+    padding:12px 12px; color:var(--text); font-size:15px; font-family:'IBM Plex Mono',monospace;
+    outline:none;
+  }
+  input[type=text]:focus, input[type=password]:focus{border-color:var(--gold);}
+  .row{display:flex; gap:8px; margin-top:12px;}
+  button{
+    font-family:'Chakra Petch',sans-serif; font-weight:600; letter-spacing:0.03em; font-size:14px;
+    border:none; border-radius:9px; padding:12px 16px; cursor:pointer; text-transform:uppercase;
+  }
+  button.primary{background:var(--gold); color:#1a1305; flex:1;}
+  button.primary:disabled{opacity:0.5;}
+  button.ghost{background:transparent; border:1px solid var(--line); color:var(--muted);}
+  .hint{font-size:12px; color:var(--muted); margin-top:10px; line-height:1.5;}
+  .hint a{color:var(--blue);}
+
+  .ticker{
+    display:flex; align-items:baseline; justify-content:space-between;
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .ticker .value{font-size:30px; font-weight:600; color:var(--gold);}
+  .ticker .label{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em;}
+
+  .item{
+    display:flex; align-items:center; gap:12px; padding:12px; border-radius:10px;
+    background:var(--panel-2); border:1px solid var(--line); margin-bottom:8px;
+    border-left: 3px solid var(--line);
+  }
+  .item img{width:44px; height:44px; object-fit:contain; background:#0f1114; border-radius:6px; flex-shrink:0;}
+  .item .name{font-size:13.5px; line-height:1.3; flex:1;}
+  .item .price{font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; white-space:nowrap; text-align:right; line-height:1.5;}
+  .item .price .usd{font-size:14px; color:var(--text);}
+  .item .price .alt{font-size:11px; font-weight:400; color:var(--muted); display:block;}
+  .item .price small{display:block; font-weight:400; color:var(--muted); font-size:10px; margin-top:2px;}
+
+  .ticker .value-group{display:flex; flex-direction:column; gap:1px;}
+  .ticker .value{font-size:26px; font-weight:600; color:var(--gold);}
+  .ticker .value-alt{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--muted);}
+
+  .tier-low{border-left-color: var(--blue);}
+  .tier-mid{border-left-color: var(--purple);}
+  .tier-high{border-left-color: var(--pink);}
+  .tier-top{border-left-color: var(--red);}
+
+  .empty{color:var(--muted); font-size:13px; text-align:center; padding:24px 10px; font-family:'IBM Plex Mono',monospace;}
+  .error{background:#2a1414; border:1px solid #5c2a2a; color:#f2a8a8; padding:12px; border-radius:9px; font-size:13px; margin-bottom:14px; font-family:'IBM Plex Mono',monospace;}
+  .loading{display:flex; align-items:center; gap:8px; color:var(--muted); font-size:13px; font-family:'IBM Plex Mono',monospace; padding: 6px 2px;}
+  .spinner{width:14px; height:14px; border-radius:50%; border:2px solid var(--line); border-top-color:var(--gold); animation:spin 0.7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .link-btn{background:none; border:none; color:var(--muted); font-family:'IBM Plex Mono',monospace; font-size:11px; text-decoration:underline; padding:4px 0; cursor:pointer;}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span>TICKER <small>YOUPIN898 · CS2</small></div>
+  </div>
+
+  <div class="wrap">
+
+    <div id="setupPanel" class="panel" style="display:none;">
+      <h2>Chave de API</h2>
+      <label for="apiKeyInput">Chave da steamwebapi.com</label>
+      <input type="password" id="apiKeyInput" placeholder="cole sua chave aqui" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <div class="row">
+        <button class="primary" id="saveKeyBtn">Salvar chave</button>
+      </div>
+      <div class="hint">
+        Crie uma conta grátis em <a href="https://www.steamwebapi.com/dashboard" target="_blank">steamwebapi.com/dashboard</a> (login com Steam) e copie sua chave de API do painel. Ela fica salva só neste app, no seu iPhone.
+      </div>
+    </div>
+
+    <div id="mainPanel" class="panel" style="display:none;">
+      <h2>Tradelink do cliente</h2>
+      <label for="tradelinkInput">Cole o link completo</label>
+      <input type="text" id="tradelinkInput" placeholder="https://steamcommunity.com/tradeoffer/new/?partner=...&token=..." autocomplete="off" autocapitalize="off" spellcheck="false">
+      <div class="row">
+        <button class="primary" id="fetchBtn">Consultar preços</button>
+      </div>
+      <div id="loadingRow"></div>
+      <button class="link-btn" id="changeKeyBtn">trocar chave de API</button>
+    </div>
+
+    <div id="errorBox"></div>
+    <div id="resultsPanel"></div>
+
+  </div>
+
+<script>
+const STORAGE_KEY = 'swa_api_key';
+let apiKey = null;
+let rates = { BRL: null, CNY: null }; // quanto vale 1 USD
+
+const setupPanel = document.getElementById('setupPanel');
+const mainPanel = document.getElementById('mainPanel');
+const apiKeyInput = document.getElementById('apiKeyInput');
+const tradelinkInput = document.getElementById('tradelinkInput');
+const errorBox = document.getElementById('errorBox');
+const resultsPanel = document.getElementById('resultsPanel');
+const loadingRow = document.getElementById('loadingRow');
+
+function showError(msg){
+  errorBox.innerHTML = `<div class="error">${msg}</div>`;
+}
+function clearError(){ errorBox.innerHTML = ''; }
+
+async function init(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, false);
+    if(res && res.value){
+      apiKey = res.value;
+      mainPanel.style.display = 'block';
+    } else {
+      setupPanel.style.display = 'block';
+    }
+  } catch(e){
+    setupPanel.style.display = 'block';
+  }
+}
+init();
+
+document.getElementById('saveKeyBtn').onclick = async () => {
+  const val = apiKeyInput.value.trim();
+  if(!val){ showError('Cole sua chave de API antes de salvar.'); return; }
+  clearError();
+  try{
+    await window.storage.set(STORAGE_KEY, val, false);
+    apiKey = val;
+    setupPanel.style.display = 'none';
+    mainPanel.style.display = 'block';
+  } catch(e){
+    showError('Não consegui salvar a chave. Tenta de novo.');
+  }
+};
+
+document.getElementById('changeKeyBtn').onclick = () => {
+  mainPanel.style.display = 'none';
+  resultsPanel.innerHTML = '';
+  apiKeyInput.value = apiKey || '';
+  setupPanel.style.display = 'block';
+};
+
+function accountIdToSteamId64(accountId){
+  const base = 76561197960265728n;
+  return (base + BigInt(accountId)).toString();
+}
+
+function extractPartner(link){
+  try{
+    const url = new URL(link.trim());
+    const partner = url.searchParams.get('partner');
+    if(partner) return partner;
+  } catch(e){
+    const match = link.match(/partner=(\d+)/);
+    if(match) return match[1];
+  }
+  return null;
+}
+
+function findYoupinPrice(item){
+  const candidates = [
+    item?.prices?.youpin?.price,
+    item?.prices?.youpin,
+    item?.price_data?.youpin?.price,
+    item?.markets?.youpin?.price,
+    item?.youpin_price,
+  ];
+  for(const c of candidates){
+    if(typeof c === 'number') return {price: c, source: 'Youpin'};
+    if(typeof c === 'string' && !isNaN(parseFloat(c))) return {price: parseFloat(c), source: 'Youpin'};
+  }
+  const fallback = item?.pricereal ?? item?.pricelatest ?? item?.pricemix;
+  if(typeof fallback === 'number') return {price: fallback, source: 'Steam (sem dado Youpin)'};
+  if(typeof fallback === 'string' && !isNaN(parseFloat(fallback))) return {price: parseFloat(fallback), source: 'Steam (sem dado Youpin)'};
+  return null;
+}
+
+function tierClass(price, max){
+  if(!max) return 'tier-low';
+  const ratio = price / max;
+  if(ratio > 0.66) return 'tier-top';
+  if(ratio > 0.33) return 'tier-high';
+  if(ratio > 0.1) return 'tier-mid';
+  return 'tier-low';
+}
+
+async function fetchRates(){
+  try{
+    const res = await fetch('https://api.frankfurter.dev/v1/latest?from=USD&to=BRL,CNY');
+    if(!res.ok) throw new Error('rate fetch failed');
+    const data = await res.json();
+    rates.BRL = data.rates.BRL;
+    rates.CNY = data.rates.CNY;
+  } catch(e){
+    rates.BRL = null;
+    rates.CNY = null;
+  }
+}
+
+function formatMulti(usd){
+  const brl = rates.BRL ? (usd * rates.BRL) : null;
+  const cny = rates.CNY ? (usd * rates.CNY) : null;
+  let html = `<span class="usd">$${usd.toFixed(2)}</span>`;
+  html += brl !== null ? `<span class="alt">R$ ${brl.toFixed(2)}</span>` : `<span class="alt">R$ —</span>`;
+  html += cny !== null ? `<span class="alt">¥ ${cny.toFixed(2)}</span>` : `<span class="alt">¥ —</span>`;
+  return html;
+}
+
+async function fetchInventory(steamId64){
+  const url = `https://www.steamwebapi.com/steam/api/inventory?steam_id=${steamId64}&game=cs2&key=${encodeURIComponent(apiKey)}&with_prices=true&markets=youpin`;
+  const res = await fetch(url);
+  if(!res.ok){
+    throw new Error(`A API respondeu com erro (${res.status}). Confira se a chave está certa e se o inventário do cliente é público.`);
+  }
+  const data = await res.json();
+  if(Array.isArray(data)) return data;
+  if(Array.isArray(data.items)) return data.items;
+  if(Array.isArray(data.data)) return data.data;
+  throw new Error('Não entendi o formato da resposta da API. Toque em "ver dados brutos" abaixo pra investigar.');
+}
+
+document.getElementById('fetchBtn').onclick = async () => {
+  clearError();
+  resultsPanel.innerHTML = '';
+  const link = tradelinkInput.value.trim();
+  if(!link){ showError('Cole o tradelink do cliente primeiro.'); return; }
+  const partner = extractPartner(link);
+  if(!partner){ showError('Não encontrei o parâmetro "partner" nesse link. Confira se colou o tradelink completo.'); return; }
+
+  let steamId64;
+  try{
+    steamId64 = accountIdToSteamId64(partner);
+  } catch(e){
+    showError('Não consegui converter esse tradelink.'); return;
+  }
+
+  loadingRow.innerHTML = '<div class="loading"><div class="spinner"></div> Buscando inventário, preços e cotações...</div>';
+
+  try{
+    const [items] = await Promise.all([
+      fetchInventory(steamId64),
+      fetchRates(),
+    ]);
+    loadingRow.innerHTML = '';
+    renderResults(items);
+  } catch(e){
+    loadingRow.innerHTML = '';
+    showError(e.message || 'Algo deu errado ao buscar os preços.');
+  }
+};
+
+function renderResults(items){
+  if(!items || items.length === 0){
+    resultsPanel.innerHTML = '<div class="empty">Nenhum item encontrado nesse inventário (ou o inventário está privado).</div>';
+    return;
+  }
+
+  const priced = items.map(it => {
+    const p = findYoupinPrice(it);
+    return {
+      name: it.markethashname || it.market_hash_name || it.name || 'Item sem nome',
+      image: it.image || it.icon_url || '',
+      price: p ? p.price : null,
+      source: p ? p.source : null,
+    };
+  }).sort((a,b) => (b.price ?? -1) - (a.price ?? -1));
+
+  const maxPrice = Math.max(...priced.map(p => p.price ?? 0));
+  const total = priced.reduce((sum,p) => sum + (p.price ?? 0), 0);
+  const totalBRL = rates.BRL ? total * rates.BRL : null;
+  const totalCNY = rates.CNY ? total * rates.CNY : null;
+
+  let html = `
+    <div class="panel">
+      <div class="ticker">
+        <div class="value-group">
+          <div class="label">Valor total (Youpin)</div>
+          <div class="value">$${total.toFixed(2)}</div>
+          <div class="value-alt">${totalBRL !== null ? 'R$ ' + totalBRL.toFixed(2) : 'R$ —'} · ${totalCNY !== null ? '¥ ' + totalCNY.toFixed(2) : '¥ —'}</div>
+        </div>
+        <div class="label">${priced.length} itens</div>
+      </div>
+    </div>
+  `;
+
+  html += priced.map(p => {
+    const tier = p.price !== null ? tierClass(p.price, maxPrice) : '';
+    const priceHtml = p.price !== null
+      ? `${formatMulti(p.price)}<small>${p.source}</small>`
+      : `—<small>sem preço</small>`;
+    const img = p.image ? `<img src="${p.image.startsWith('http') ? p.image : 'https://community.akamai.steamstatic.com/economy/image/' + p.image}" onerror="this.style.visibility='hidden'">` : '';
+    return `<div class="item ${tier}">${img}<div class="name">${p.name}</div><div class="price">${priceHtml}</div></div>`;
+  }).join('');
+
+  resultsPanel.innerHTML = html;
+}
+</script>
+</body>
+</html>
