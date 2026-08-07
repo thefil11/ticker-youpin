@@ -53,6 +53,13 @@
   .card h2{font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:600;
     text-transform:uppercase;letter-spacing:.13em;color:var(--muted);margin:0 0 13px;}
 
+  .mkt-row{display:flex;gap:7px;margin-bottom:14px;}
+  .mkt-btn{flex:1;background:var(--bg);border:1px solid var(--line);color:var(--muted-2);
+    font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:500;
+    text-transform:none;letter-spacing:.02em;padding:10px 8px;border-radius:10px;cursor:pointer;
+    transition:all .12s ease;}
+  .mkt-btn.active{background:rgba(217,180,95,.12);border-color:var(--gold-dim);color:var(--gold);}
+
   label{display:block;font-size:11px;color:var(--muted);margin-bottom:7px;
     font-family:'JetBrains Mono',monospace;letter-spacing:.02em;}
   input[type=text],input[type=password]{
@@ -94,6 +101,22 @@
   .sum-count{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted);
     text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;}
   .sum-actions{display:flex;gap:8px;margin-top:15px;}
+  .disc-row{display:flex;align-items:center;gap:7px;margin-top:12px;padding-top:12px;
+    border-top:1px solid var(--line);flex-wrap:wrap;}
+  .disc-lb{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted);}
+  .disc-in{width:62px!important;padding:7px 9px!important;font-size:13px!important;
+    text-align:center;border-radius:8px!important;}
+  .disc-out{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;
+    color:var(--ok);margin-left:auto;font-variant-numeric:tabular-nums;}
+
+  .hist-row{display:flex;align-items:center;gap:9px;background:var(--surface-2);
+    border:1px solid var(--line-soft);border-radius:11px;padding:10px 12px;margin-bottom:7px;}
+  .hist-info{flex:1;min-width:0;}
+  .hist-nm{font-size:12.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .hist-sub{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--muted);margin-top:3px;}
+  .hist-del{background:none;border:none;color:var(--muted);font-size:15px;padding:4px 6px;
+    text-transform:none;flex-shrink:0;}
+
   .warn{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--gold);
     margin-top:13px;padding-top:11px;border-top:1px solid var(--line);line-height:1.5;}
 
@@ -139,6 +162,41 @@
     border:1px solid rgba(217,180,95,.22);letter-spacing:.04em;
     vertical-align:1px;white-space:nowrap;}
 
+  .stk-btn{display:inline-flex;align-items:center;gap:4px;font-family:'JetBrains Mono',monospace;
+    font-size:9px;font-weight:500;padding:2px 8px 2px 6px;border-radius:20px;margin-left:5px;
+    background:rgba(90,150,217,.12);color:#7fb0e6;border:1px solid rgba(90,150,217,.25);
+    letter-spacing:.03em;vertical-align:1px;white-space:nowrap;cursor:pointer;}
+  .stk-btn:active{opacity:.7;}
+
+  .stk-overlay{position:fixed;inset:0;background:rgba(6,7,9,.72);backdrop-filter:blur(3px);
+    z-index:50;display:flex;align-items:flex-end;justify-content:center;
+    animation:fadeIn .15s ease;}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .stk-sheet{width:100%;max-width:540px;max-height:78vh;background:var(--surface);
+    border:1px solid var(--line);border-bottom:none;border-radius:20px 20px 0 0;
+    padding:16px 16px calc(env(safe-area-inset-bottom) + 16px);
+    display:flex;flex-direction:column;animation:slideUp .18s ease;}
+  @keyframes slideUp{from{transform:translateY(24px);opacity:.4}to{transform:translateY(0);opacity:1}}
+  .stk-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;}
+  .stk-title{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14.5px;}
+  .stk-x{background:var(--surface-2);border:1px solid var(--line);color:var(--muted-2);
+    width:28px;height:28px;border-radius:9px;font-size:15px;line-height:1;padding:0;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .stk-item-name{font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.4;}
+  .stk-total{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted-2);
+    margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--line);}
+  .stk-total b{color:var(--gold);font-size:15px;font-weight:700;}
+  .stk-list{overflow-y:auto;display:flex;flex-direction:column;gap:8px;}
+  .stk-row{display:flex;align-items:center;gap:11px;background:var(--surface-2);
+    border:1px solid var(--line-soft);border-radius:11px;padding:9px 11px;}
+  .stk-row img{width:34px;height:34px;object-fit:contain;
+    background:radial-gradient(circle at 50% 45%,#1e232a,#101317);border-radius:6px;flex-shrink:0;}
+  .stk-row .nm2{flex:1;font-size:12px;line-height:1.3;}
+  .stk-wear{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--muted);
+    margin-top:2px;}
+  .stk-row .pr2{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;
+    text-align:right;white-space:nowrap;}
+
   .price{text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums;}
   .p-usd{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;
     letter-spacing:-.02em;}
@@ -170,7 +228,7 @@
 </head>
 <body>
   <div class="topbar">
-    <div class="brand"><i class="pip"></i>Ticker<span>YOUPIN898</span></div>
+    <div class="brand"><i class="pip"></i>Ticker<span>CS2 · MULTI-MARKET</span></div>
   </div>
 
   <div class="wrap">
@@ -186,11 +244,25 @@
 
     <div id="main" class="card" style="display:none">
       <h2>Consultar inventário</h2>
+      <label>Marketplace</label>
+      <div class="mkt-row" id="mktRow">
+        <button class="mkt-btn active" data-mkt="youpin">Youpin</button>
+        <button class="mkt-btn" data-mkt="buff">Buff163</button>
+        <button class="mkt-btn" data-mkt="csfloat">CSFloat</button>
+      </div>
       <label for="linkIn">Tradelink do cliente</label>
       <input type="text" id="linkIn" placeholder="https://steamcommunity.com/tradeoffer/new/?partner=…" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <label for="cliIn" style="margin-top:13px;">Cliente (opcional — nome, número, ou os dois)</label>
+      <input type="text" id="cliIn" placeholder="Lucas (11 98765-4321)" autocomplete="off">
       <button class="btn-main" id="goBtn">Consultar preços</button>
       <div id="load"></div>
       <button class="btn-link" id="chBtn">trocar chave de api</button>
+    </div>
+
+    <div id="histCard" class="card" style="display:none">
+      <h2>Consultas salvas</h2>
+      <div id="histList"></div>
+      <div class="hint">Reabrir uma consulta salva não gasta cota da API — os preços são os do momento em que você consultou.</div>
     </div>
 
     <div id="err"></div>
@@ -199,7 +271,36 @@
 
 <script>
 const KEY='swa_api_key';
-let apiKey=null, rates={BRL:null,CNY:null}, items=[];
+const DISC_KEY='swa_discount';
+const HIST_KEY='swa_history';
+let apiKey=null, rates={BRL:null,CNY:null}, items=[], market='youpin';
+let discount='', currentLabel='', currentSteamId='';
+
+try{ discount=localStorage.getItem(DISC_KEY)||''; }catch(e){}
+
+function discText(tot){
+  const d=parseFloat(discount);
+  if(isNaN(d)||d<=0) return '—';
+  const v=tot*(1-d/100);
+  return rates.BRL?brl(v*rates.BRL):usd(v);
+}
+
+function loadHist(){
+  try{ return JSON.parse(localStorage.getItem(HIST_KEY)||'[]'); }catch(e){ return []; }
+}
+function saveHist(h){
+  try{ localStorage.setItem(HIST_KEY,JSON.stringify(h)); }catch(e){}
+}
+
+const MKT_LABEL={youpin:'Youpin',buff:'Buff163',csfloat:'CSFloat'};
+
+document.querySelectorAll('.mkt-btn').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('.mkt-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    market=b.dataset.mkt;
+  };
+});
 
 const $=id=>document.getElementById(id);
 const setup=$('setup'), main=$('main'), keyIn=$('keyIn'), linkIn=$('linkIn'),
@@ -211,7 +312,7 @@ const clrErr=()=>{err.innerHTML='';};
 /* ---------- chave ---------- */
 try{
   const v=localStorage.getItem(KEY);
-  if(v){apiKey=v;main.style.display='block';} else setup.style.display='block';
+  if(v){apiKey=v;main.style.display='block';drawHist();} else setup.style.display='block';
 }catch(e){setup.style.display='block';}
 
 $('saveBtn').onclick=()=>{
@@ -239,6 +340,7 @@ const toSteamId64=id=>(76561197960265728n+BigInt(id)).toString();
 /* ---------- preço ---------- */
 function priceOf(it){
   const ph=it?.float?.phase??null, pi=it?.float?.paintindex??null;
+  const label=MKT_LABEL[market]||market;
   // fase específica (Doppler, Gamma, Ruby, Sapphire, Esmeralda, Black Pearl…)
   if(ph&&Array.isArray(it?.variants)&&it.variants.length){
     let v=null;
@@ -247,12 +349,12 @@ function priceOf(it){
       const t=String(ph).toLowerCase().replace(/\s+/g,'');
       v=it.variants.find(x=>String(x.phase||'').toLowerCase().replace(/\s+/g,'')===t);
     }
-    if(v&&typeof v.pricereal==='number') return {price:v.pricereal,src:'Youpin · '+v.phase};
+    if(v&&typeof v.pricereal==='number') return {price:v.pricereal,src:label+' · '+v.phase};
   }
-  if(typeof it?.pricereal==='number') return {price:it.pricereal,src:'Youpin'};
+  if(typeof it?.pricereal==='number') return {price:it.pricereal,src:label};
   const fb=it?.pricelatestsell??it?.pricemedian??it?.pricelatest??it?.pricemix;
   const n=typeof fb==='number'?fb:(typeof fb==='string'?parseFloat(fb):NaN);
-  if(!isNaN(n)&&n!==null) return {price:n,src:'Steam · sem dado Youpin'};
+  if(!isNaN(n)&&n!==null) return {price:n,src:'Steam · sem dado '+label};
   return null;
 }
 
@@ -273,7 +375,7 @@ const cny=n=>'¥ '+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFrac
 /* ---------- inventário ---------- */
 async function getInv(id){
   const u=`https://www.steamwebapi.com/steam/api/inventory?steam_id=${id}&game=cs2`
-        +`&key=${encodeURIComponent(apiKey)}&with_prices=true&markets=youpin`
+        +`&key=${encodeURIComponent(apiKey)}&with_prices=true&markets=${market}`
         +`&with_phase_price=true&limit=5000`;
   const r=await fetch(u);
   if(r.status===401||r.status===403) throw new Error('Chave de API recusada. Toque em "trocar chave de api" e confira.');
@@ -294,11 +396,16 @@ $('goBtn').onclick=async()=>{
   const p=partnerOf(link);
   if(!p){showErr('Não achei o "partner=" nesse link. Confira se colou o tradelink completo.');return;}
 
+  const sid=toSteamId64(p);
+  currentSteamId=sid;
+  currentLabel=($('cliIn').value||'').trim();
+
   load.innerHTML='<div class="loading"><i class="spin"></i>Buscando inventário e preços…</div>';
   try{
-    const [inv]=await Promise.all([getInv(toSteamId64(p)),getRates()]);
+    const [inv]=await Promise.all([getInv(sid),getRates()]);
     load.innerHTML='';
     build(inv);
+    pushHist();
   }catch(e){
     load.innerHTML='';
     showErr(e.message||'Algo deu errado na consulta.');
@@ -314,6 +421,8 @@ function build(list){
   items=list.map((it,i)=>{
     const pr=priceOf(it);
     const f=it.float?.floatvalue??null;
+    const stk=Array.isArray(it.float?.stickers)?it.float.stickers:
+               Array.isArray(it.stickers)?it.stickers:[];
     return{
       i,
       name:it.markethashname||it.marketname||'Item sem nome',
@@ -324,6 +433,7 @@ function build(list){
       float:typeof f==='number'?f:(f?parseFloat(f):null),
       seed:it.float?.paintseed??null,
       phase:it.float?.phase??null,
+      stickers:stk,
       raw:it,
       on:true
     };
@@ -351,6 +461,13 @@ function draw(){
       <button class="btn-ghost" id="allBtn">Selecionar tudo</button>
       <button class="btn-ghost" id="noneBtn">Desmarcar tudo</button>
     </div>
+    <div class="disc-row">
+      <span class="disc-lb">Oferta com</span>
+      <input type="number" id="discIn" class="disc-in" value="${esc(discount)}" placeholder="0" inputmode="decimal" min="0" max="100">
+      <span class="disc-lb">% off:</span>
+      <b class="disc-out" id="discOut">${discText(tot)}</b>
+    </div>
+    <button class="btn-ghost" id="copyBtn" style="width:100%;margin-top:9px;">Copiar resumo</button>
     ${!rates.BRL?`<div class="warn">Não consegui buscar a cotação do dia — os valores em real e yuan estão indisponíveis. Consulte de novo em instantes.</div>`:''}
     ${none?`<div class="warn">${none} ${none===1?'item selecionado está':'itens selecionados estão'} sem preço e não ${none===1?'entra':'entram'} no total.</div>`:''}
   </div>`;
@@ -369,7 +486,8 @@ function draw(){
       meta+=`<div class="meta">seed ${x.seed}</div>`;
     }
 
-    const nm=esc(x.name)+(x.phase?`<span class="phase">${esc(x.phase)}</span>`:'');
+    const nm=esc(x.name)+(x.phase?`<span class="phase">${esc(x.phase)}</span>`:'')
+      +(x.stickers&&x.stickers.length?`<button class="stk-btn stk-open" data-i="${x.i}">🏷️ ${x.stickers.length}</button>`:'');
 
     const pr=x.price!==null
       ? `<div class="p-usd">${rates.BRL?brl(x.price*rates.BRL):'R$ —'}</div>
@@ -394,6 +512,29 @@ function draw(){
   $('allBtn').onclick=()=>{items.forEach(x=>x.on=true);draw();};
   $('noneBtn').onclick=()=>{items.forEach(x=>x.on=false);draw();};
 
+  const di=$('discIn');
+  if(di){
+    di.oninput=e=>{
+      discount=e.target.value;
+      try{ localStorage.setItem(DISC_KEY,discount); }catch(err){}
+      const o=$('discOut');
+      if(o) o.textContent=discText(tot);
+    };
+  }
+  const cb=$('copyBtn');
+  if(cb){
+    cb.onclick=async()=>{
+      const txt=buildSummary(on,tot);
+      try{
+        await navigator.clipboard.writeText(txt);
+        cb.textContent='Copiado!';
+        setTimeout(()=>{cb.textContent='Copiar resumo';},1600);
+      }catch(err){
+        showErr('Não consegui copiar automaticamente. Toque em "ver dados brutos" para copiar manualmente.');
+      }
+    };
+  }
+
   out.querySelectorAll('.check').forEach(c=>{
     c.onchange=e=>{
       const it=items.find(x=>x.i==e.target.dataset.i);
@@ -412,6 +553,165 @@ function draw(){
       }
     };
   });
+  out.querySelectorAll('.stk-open').forEach(b=>{
+    b.onclick=e=>{
+      const it=items.find(x=>x.i==e.currentTarget.dataset.i);
+      if(it) openStickers(it);
+    };
+  });
+}
+
+/* ---------- histórico ---------- */
+function pushHist(){
+  const h=loadHist();
+  const entry={
+    id:Date.now(),
+    label:currentLabel,
+    steamId:currentSteamId,
+    link:linkIn.value.trim(),
+    market:market,
+    when:new Date().toISOString(),
+    // guarda sem o JSON bruto pra caber no armazenamento
+    items:items.map(x=>({
+      name:x.name,img:x.img,rarity:x.rarity,price:x.price,src:x.src,
+      float:x.float,seed:x.seed,phase:x.phase,stickers:x.stickers
+    }))
+  };
+  h.unshift(entry);
+  saveHist(h.slice(0,10)); // mantém as 10 mais recentes
+  drawHist();
+}
+
+function drawHist(){
+  const h=loadHist();
+  const card=$('histCard'), list=$('histList');
+  if(!h.length){ card.style.display='none'; return; }
+  card.style.display='block';
+  list.innerHTML=h.map(e=>{
+    const d=new Date(e.when);
+    const quando=d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const nome=e.label||('SteamID '+e.steamId);
+    const n=e.items?e.items.length:0;
+    return `<div class="hist-row">
+      <div class="hist-info" data-open="${e.id}" style="cursor:pointer">
+        <div class="hist-nm">${esc(nome)}</div>
+        <div class="hist-sub">${quando} · ${n} itens · ${esc(MKT_LABEL[e.market]||e.market||'')}</div>
+      </div>
+      <button class="hist-del" data-del="${e.id}">✕</button>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('[data-open]').forEach(el=>{
+    el.onclick=()=>{
+      const e=loadHist().find(x=>x.id==el.dataset.open);
+      if(!e) return;
+      currentLabel=e.label||''; currentSteamId=e.steamId||'';
+      linkIn.value=e.link||''; $('cliIn').value=e.label||'';
+      market=e.market||'youpin';
+      document.querySelectorAll('.mkt-btn').forEach(b=>{
+        b.classList.toggle('active',b.dataset.mkt===market);
+      });
+      items=(e.items||[]).map((x,i)=>({...x,i,raw:null,on:true}));
+      clrErr();
+      draw();
+      out.scrollIntoView({behavior:'smooth',block:'start'});
+    };
+  });
+  list.querySelectorAll('[data-del]').forEach(b=>{
+    b.onclick=()=>{
+      saveHist(loadHist().filter(x=>x.id!=b.dataset.del));
+      drawHist();
+    };
+  });
+}
+
+/* ---------- resumo em texto ---------- */
+function buildSummary(sel,tot){
+  const hoje=new Date().toLocaleDateString('pt-BR');
+  const head=currentLabel?`INVENTÁRIO — ${currentLabel}`:'INVENTÁRIO';
+  const linhas=sel.map(x=>{
+    let l=x.name;
+    if(x.phase) l+=` [${x.phase}]`;
+    const v=x.price!==null?(rates.BRL?brl(x.price*rates.BRL):usd(x.price)):'sem preço';
+    return l+'\n  '+v;
+  }).join('\n\n');
+
+  let rodape='———\n'+sel.length+' '+(sel.length===1?'item':'itens')
+    +'\nTotal: '+(rates.BRL?brl(tot*rates.BRL):usd(tot));
+  const d=parseFloat(discount);
+  if(!isNaN(d)&&d>0) rodape+=`\nOferta (-${d}%): `+discText(tot);
+
+  return head+'\n'+hoje+'\n\n'+linhas+'\n\n'+rodape;
+}
+
+/* ---------- modal de adesivos ---------- */
+function stickerLabel(s){
+  return s.name||s.markethashname||s.market_hash_name||'Adesivo';
+}
+function stickerImg(s){
+  const img=s.image||s.icon_url||'';
+  if(!img) return '';
+  return img.startsWith('http')?img:'https://community.akamai.steamstatic.com/economy/image/'+img;
+}
+function stickerPrice(s){
+  const cand=[s.pricereal,s.price,s.pricelatest,s.pricemedian];
+  for(const c of cand){
+    if(typeof c==='number') return c;
+    if(typeof c==='string'&&!isNaN(parseFloat(c))) return parseFloat(c);
+  }
+  return null;
+}
+function stickerWear(s){
+  const cand=[s.wear,s.stickerwear,s.wear_value,s.scrape,s.condition];
+  for(let c of cand){
+    if(typeof c==='string') c=parseFloat(c);
+    if(typeof c==='number'&&!isNaN(c)){
+      // valores 0-1 são fração; valores >1 já vêm em percentual
+      return c<=1?c*100:c;
+    }
+  }
+  return null;
+}
+
+function openStickers(it){
+  const rows=it.stickers.map(s=>{
+    const p=stickerPrice(s);
+    const w=stickerWear(s);
+    const img=stickerImg(s);
+    const priceHtml=p!==null
+      ? (rates.BRL?brl(p*rates.BRL):usd(p))
+      : '<span style="color:var(--muted);font-weight:400">sem preço</span>';
+    const wearHtml=w!==null
+      ? `<div class="stk-wear">desgaste ${w.toFixed(1)}%</div>`
+      : '';
+    return `<div class="stk-row">
+      ${img?`<img src="${esc(img)}" onerror="this.style.visibility='hidden'">`:''}
+      <div class="nm2">${esc(stickerLabel(s))}${wearHtml}</div>
+      <div class="pr2">${priceHtml}</div>
+    </div>`;
+  }).join('');
+
+  const known=it.stickers.map(stickerPrice).filter(p=>p!==null);
+  const total=known.reduce((a,b)=>a+b,0);
+  const totalHtml=known.length
+    ? `Total dos adesivos: <b>${rates.BRL?brl(total*rates.BRL):usd(total)}</b>${known.length<it.stickers.length?` <span style="color:var(--muted)">(${it.stickers.length-known.length} sem preço)</span>`:''}`
+    : `Nenhum adesivo com preço disponível.`;
+
+  const wrap=document.createElement('div');
+  wrap.className='stk-overlay';
+  wrap.innerHTML=`<div class="stk-sheet">
+    <div class="stk-head">
+      <div class="stk-title">Adesivos</div>
+      <button class="stk-x" id="stkClose">✕</button>
+    </div>
+    <div class="stk-item-name">${esc(it.name)}</div>
+    <div class="stk-total">${totalHtml}</div>
+    <div class="stk-list">${rows}</div>
+  </div>`;
+  document.body.appendChild(wrap);
+  const close=()=>wrap.remove();
+  wrap.querySelector('#stkClose').onclick=close;
+  wrap.onclick=e=>{ if(e.target===wrap) close(); };
 }
 </script>
 </body>
