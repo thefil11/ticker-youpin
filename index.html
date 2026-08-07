@@ -62,12 +62,15 @@
 
   label{display:block;font-size:11px;color:var(--muted);margin-bottom:7px;
     font-family:'JetBrains Mono',monospace;letter-spacing:.02em;}
-  input[type=text],input[type=password]{
+  input[type=text],input[type=password],input[type=number]{
     width:100%;background:var(--bg);border:1px solid var(--line);border-radius:11px;
     padding:13px 14px;color:var(--text);font-size:15px;
     font-family:'JetBrains Mono',monospace;outline:none;
     transition:border-color .15s ease;
   }
+  input[type=number]{-moz-appearance:textfield;}
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
   input:focus{border-color:var(--gold-dim);}
   input::placeholder{color:#454c54;}
 
@@ -273,6 +276,7 @@
 const KEY='swa_api_key';
 const DISC_KEY='swa_discount';
 const HIST_KEY='swa_history';
+const RATE_KEY='swa_rates';
 let apiKey=null, rates={BRL:null,CNY:null}, items=[], market='youpin';
 let discount='', currentLabel='', currentSteamId='', loadedCount=0, lastPageFull=false;
 
@@ -289,7 +293,18 @@ function loadHist(){
   try{ return JSON.parse(localStorage.getItem(HIST_KEY)||'[]'); }catch(e){ return []; }
 }
 function saveHist(h){
-  try{ localStorage.setItem(HIST_KEY,JSON.stringify(h)); }catch(e){}
+  // se faltar espaço, descarta as consultas mais antigas até caber
+  let lista=h.slice();
+  while(lista.length){
+    try{
+      localStorage.setItem(HIST_KEY,JSON.stringify(lista));
+      return true;
+    }catch(e){
+      lista.pop();
+    }
+  }
+  try{ localStorage.removeItem(HIST_KEY); }catch(e){}
+  return false;
 }
 
 const MKT_LABEL={youpin:'Youpin',buff:'Buff163',csfloat:'CSFloat'};
@@ -314,6 +329,10 @@ try{
   const v=localStorage.getItem(KEY);
   if(v){apiKey=v;main.style.display='block';drawHist();} else setup.style.display='block';
 }catch(e){setup.style.display='block';}
+
+// cotação: usa a última salva na hora e atualiza em segundo plano
+loadCachedRates();
+getRates().then(()=>{ if(items.length) draw(); });
 
 $('saveBtn').onclick=()=>{
   const v=keyIn.value.trim();
@@ -359,13 +378,23 @@ function priceOf(it){
 }
 
 /* ---------- cotações ---------- */
+function loadCachedRates(){
+  try{
+    const c=JSON.parse(localStorage.getItem(RATE_KEY)||'null');
+    if(c&&typeof c.BRL==='number'){ rates.BRL=c.BRL; rates.CNY=c.CNY; }
+  }catch(e){}
+}
 async function getRates(){
   try{
     const r=await fetch('https://api.frankfurter.dev/v1/latest?from=USD&to=BRL,CNY');
     if(!r.ok) throw 0;
     const d=await r.json();
     rates.BRL=d.rates.BRL;rates.CNY=d.rates.CNY;
-  }catch(e){rates.BRL=null;rates.CNY=null;}
+    try{ localStorage.setItem(RATE_KEY,JSON.stringify({BRL:rates.BRL,CNY:rates.CNY,at:Date.now()})); }catch(e){}
+  }catch(e){
+    // mantém a última cotação conhecida, se houver
+    if(rates.BRL===null) loadCachedRates();
+  }
 }
 
 const usd=n=>'$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -512,8 +541,8 @@ function draw(){
       <div class="thumb">${img}${meta}</div>
       <div class="body">
         <div class="nm">${nm}</div>
-        <button class="btn-link raw-btn" data-i="${x.i}">ver dados brutos</button>
-        <pre class="raw" data-i="${x.i}"></pre>
+        ${x.raw?`<button class="btn-link raw-btn" data-i="${x.i}">ver dados brutos</button>
+        <pre class="raw" data-i="${x.i}"></pre>`:''}
       </div>
       <div class="price">${pr}</div>
     </div>`;
@@ -563,7 +592,24 @@ function draw(){
         cb.textContent='Copiado!';
         setTimeout(()=>{cb.textContent='Copiar resumo';},1600);
       }catch(err){
-        showErr('Não consegui copiar automaticamente. Toque em "ver dados brutos" para copiar manualmente.');
+        // fallback: mostra o texto num painel para cópia manual
+        const w=document.createElement('div');
+        w.className='stk-overlay';
+        w.innerHTML=`<div class="stk-sheet">
+          <div class="stk-head">
+            <div class="stk-title">Copiar resumo</div>
+            <button class="stk-x" id="cpClose">✕</button>
+          </div>
+          <div class="stk-item-name">Selecione o texto e copie manualmente.</div>
+          <textarea readonly style="width:100%;height:44vh;background:var(--bg);color:var(--text);
+            border:1px solid var(--line);border-radius:11px;padding:12px;font-size:12px;
+            font-family:'JetBrains Mono',monospace;resize:none;">${esc(txt)}</textarea>
+        </div>`;
+        document.body.appendChild(w);
+        w.querySelector('#cpClose').onclick=()=>w.remove();
+        w.onclick=ev=>{ if(ev.target===w) w.remove(); };
+        const ta=w.querySelector('textarea');
+        ta.focus(); ta.select();
       }
     };
   }
@@ -645,6 +691,8 @@ function drawHist(){
         b.classList.toggle('active',b.dataset.mkt===market);
       });
       items=(e.items||[]).map((x,i)=>({...x,i,raw:null,on:true}));
+      loadedCount=items.length;
+      lastPageFull=false;
       clrErr();
       draw();
       out.scrollIntoView({behavior:'smooth',block:'start'});
