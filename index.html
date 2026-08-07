@@ -75,12 +75,18 @@
   .ticker .label{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em;}
 
   .item{
-    display:flex; align-items:center; gap:12px; padding:12px; border-radius:10px;
+    display:flex; align-items:center; gap:10px; padding:12px; border-radius:10px;
     background:var(--panel-2); border:1px solid var(--line); margin-bottom:8px;
     border-left: 3px solid var(--line);
   }
   .item img{width:44px; height:44px; object-fit:contain; background:#0f1114; border-radius:6px; flex-shrink:0;}
   .item .name{font-size:13.5px; line-height:1.3; flex:1;}
+  .item-meta{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--muted); margin-top:3px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;}
+  .phase-chip{
+    background: linear-gradient(135deg, var(--purple), var(--pink));
+    color:#0b0d10; font-weight:600; padding:1px 7px; border-radius:20px; font-size:10px;
+    text-transform:uppercase; letter-spacing:0.03em;
+  }
   .item .price{font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; white-space:nowrap; text-align:right; line-height:1.5;}
   .item .price .usd{font-size:14px; color:var(--text);}
   .item .price .alt{font-size:11px; font-weight:400; color:var(--muted); display:block;}
@@ -212,11 +218,13 @@ function extractPartner(link){
 
 function findYoupinPrice(item){
   const candidates = [
+    item?.prices?.youpin?.phase_price,
     item?.prices?.youpin?.price,
     item?.prices?.youpin,
     item?.price_data?.youpin?.price,
     item?.markets?.youpin?.price,
     item?.youpin_price,
+    item?.pricephase,
   ];
   for(const c of candidates){
     if(typeof c === 'number') return {price: c, source: 'Youpin'};
@@ -260,7 +268,7 @@ function formatMulti(usd){
 }
 
 async function fetchInventory(steamId64){
-  const url = `https://www.steamwebapi.com/steam/api/inventory?steam_id=${steamId64}&game=cs2&key=${encodeURIComponent(apiKey)}&with_prices=true&markets=youpin`;
+  const url = `https://www.steamwebapi.com/steam/api/inventory?steam_id=${steamId64}&game=cs2&key=${encodeURIComponent(apiKey)}&with_prices=true&markets=youpin&with_phase_price=true`;
   const res = await fetch(url);
   if(!res.ok){
     throw new Error(`A API respondeu com erro (${res.status}). Confira se a chave está certa e se o inventário do cliente é público.`);
@@ -302,24 +310,41 @@ document.getElementById('fetchBtn').onclick = async () => {
   }
 };
 
+let currentItems = []; // {id, name, image, price, source, raw, selected}
+
 function renderResults(items){
   if(!items || items.length === 0){
     resultsPanel.innerHTML = '<div class="empty">Nenhum item encontrado nesse inventário (ou o inventário está privado).</div>';
     return;
   }
 
-  const priced = items.map(it => {
+  currentItems = items.map((it, idx) => {
     const p = findYoupinPrice(it);
+    const floatValue = it.floatvalue ?? it.float_value ?? it.paintwear ?? null;
+    const pattern = it.paintseed ?? it.paint_seed ?? null;
+    const phase = it.phase ?? it.doppler_phase ?? null;
     return {
+      id: idx,
       name: it.markethashname || it.market_hash_name || it.name || 'Item sem nome',
       image: it.image || it.icon_url || '',
       price: p ? p.price : null,
       source: p ? p.source : null,
+      floatValue: typeof floatValue === 'number' ? floatValue : (floatValue ? parseFloat(floatValue) : null),
+      pattern: pattern !== null && pattern !== undefined ? pattern : null,
+      phase: phase || null,
+      raw: it,
+      selected: true,
     };
   }).sort((a,b) => (b.price ?? -1) - (a.price ?? -1));
 
+  drawResults();
+}
+
+function drawResults(){
+  const priced = currentItems;
+  const selected = priced.filter(p => p.selected);
   const maxPrice = Math.max(...priced.map(p => p.price ?? 0));
-  const total = priced.reduce((sum,p) => sum + (p.price ?? 0), 0);
+  const total = selected.reduce((sum,p) => sum + (p.price ?? 0), 0);
   const totalBRL = rates.BRL ? total * rates.BRL : null;
   const totalCNY = rates.CNY ? total * rates.CNY : null;
 
@@ -327,11 +352,15 @@ function renderResults(items){
     <div class="panel">
       <div class="ticker">
         <div class="value-group">
-          <div class="label">Valor total (Youpin)</div>
+          <div class="label">Valor selecionado (Youpin)</div>
           <div class="value">$${total.toFixed(2)}</div>
           <div class="value-alt">${totalBRL !== null ? 'R$ ' + totalBRL.toFixed(2) : 'R$ —'} · ${totalCNY !== null ? '¥ ' + totalCNY.toFixed(2) : '¥ —'}</div>
         </div>
-        <div class="label">${priced.length} itens</div>
+        <div class="label">${selected.length} de ${priced.length} itens</div>
+      </div>
+      <div class="row">
+        <button class="ghost" id="selectAllBtn" style="flex:1;">Selecionar tudo</button>
+        <button class="ghost" id="deselectAllBtn" style="flex:1;">Desmarcar tudo</button>
       </div>
     </div>
   `;
@@ -342,10 +371,51 @@ function renderResults(items){
       ? `${formatMulti(p.price)}<small>${p.source}</small>`
       : `—<small>sem preço</small>`;
     const img = p.image ? `<img src="${p.image.startsWith('http') ? p.image : 'https://community.akamai.steamstatic.com/economy/image/' + p.image}" onerror="this.style.visibility='hidden'">` : '';
-    return `<div class="item ${tier}">${img}<div class="name">${p.name}</div><div class="price">${priceHtml}</div></div>`;
+    const metaBits = [];
+    if(p.phase) metaBits.push(`<span class="phase-chip">${p.phase}</span>`);
+    if(p.floatValue !== null) metaBits.push(`Float ${p.floatValue.toFixed(4)}`);
+    if(p.pattern !== null) metaBits.push(`Pattern ${p.pattern}`);
+    const metaHtml = metaBits.length ? `<div class="item-meta">${metaBits.join(' · ')}</div>` : '';
+    return `
+      <div class="item ${tier}" data-id="${p.id}">
+        <input type="checkbox" class="item-check" data-id="${p.id}" ${p.selected ? 'checked' : ''} style="width:18px; height:18px; accent-color:#d4af5a; flex-shrink:0;">
+        ${img}
+        <div class="name">${p.name}${metaHtml}<div><button class="link-btn debug-toggle" data-id="${p.id}">ver dados brutos</button></div><pre class="raw-json" data-id="${p.id}" style="display:none; white-space:pre-wrap; font-size:10px; color:var(--muted); background:#0d0f12; padding:8px; border-radius:6px; margin-top:6px; max-height:200px; overflow:auto;"></pre></div>
+        <div class="price">${priceHtml}</div>
+      </div>`;
   }).join('');
 
   resultsPanel.innerHTML = html;
+
+  document.getElementById('selectAllBtn').onclick = () => {
+    currentItems.forEach(p => p.selected = true);
+    drawResults();
+  };
+  document.getElementById('deselectAllBtn').onclick = () => {
+    currentItems.forEach(p => p.selected = false);
+    drawResults();
+  };
+  resultsPanel.querySelectorAll('.item-check').forEach(cb => {
+    cb.onchange = (e) => {
+      const id = parseInt(e.target.dataset.id);
+      const item = currentItems.find(p => p.id === id);
+      if(item) item.selected = e.target.checked;
+      drawResults();
+    };
+  });
+  resultsPanel.querySelectorAll('.debug-toggle').forEach(btn => {
+    btn.onclick = (e) => {
+      const id = e.target.dataset.id;
+      const pre = resultsPanel.querySelector(`.raw-json[data-id="${id}"]`);
+      if(pre.style.display === 'none'){
+        const item = currentItems.find(p => p.id == id);
+        pre.textContent = JSON.stringify(item.raw, null, 2);
+        pre.style.display = 'block';
+      } else {
+        pre.style.display = 'none';
+      }
+    };
+  });
 }
 </script>
 </body>
