@@ -274,7 +274,7 @@ const KEY='swa_api_key';
 const DISC_KEY='swa_discount';
 const HIST_KEY='swa_history';
 let apiKey=null, rates={BRL:null,CNY:null}, items=[], market='youpin';
-let discount='', currentLabel='', currentSteamId='';
+let discount='', currentLabel='', currentSteamId='', loadedCount=0, lastPageFull=false;
 
 try{ discount=localStorage.getItem(DISC_KEY)||''; }catch(e){}
 
@@ -373,10 +373,13 @@ const brl=n=>'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFrac
 const cny=n=>'¥ '+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 
 /* ---------- inventário ---------- */
-async function getInv(id){
+const PAGE_LIMIT=1000;
+
+async function getInv(id,offset){
+  const off=offset||0;
   const u=`https://www.steamwebapi.com/steam/api/inventory?steam_id=${id}&game=cs2`
         +`&key=${encodeURIComponent(apiKey)}&with_prices=true&markets=${market}`
-        +`&with_phase_price=true&limit=5000`;
+        +`&with_phase_price=true&limit=${PAGE_LIMIT}&offset=${off}`;
   const r=await fetch(u);
   if(r.status===401||r.status===403) throw new Error('Chave de API recusada. Toque em "trocar chave de api" e confira.');
   if(r.status===429) throw new Error('Limite de consultas atingido. Espere um pouco e tente de novo.');
@@ -402,9 +405,10 @@ $('goBtn').onclick=async()=>{
 
   load.innerHTML='<div class="loading"><i class="spin"></i>Buscando inventário e preços…</div>';
   try{
-    const [inv]=await Promise.all([getInv(sid),getRates()]);
+    loadedCount=0;
+    const [inv]=await Promise.all([getInv(sid,0),getRates()]);
     load.innerHTML='';
-    build(inv);
+    build(inv,false);
     pushHist();
   }catch(e){
     load.innerHTML='';
@@ -413,12 +417,14 @@ $('goBtn').onclick=async()=>{
 };
 
 /* ---------- montar lista ---------- */
-function build(list){
-  if(!list||!list.length){
+function build(list,append){
+  if((!list||!list.length)&&!append){
     out.innerHTML='<div class="empty">Nenhum item encontrado.<br>O inventário pode estar privado.</div>';
     return;
   }
-  items=list.map((it,i)=>{
+  const base=append?items.length:0;
+  const novos=list.map((it,k)=>{
+    const i=base+k;
     const pr=priceOf(it);
     const f=it.float?.floatvalue??null;
     const stk=Array.isArray(it.float?.stickers)?it.float.stickers:
@@ -437,7 +443,12 @@ function build(list){
       raw:it,
       on:true
     };
-  }).sort((a,b)=>(b.price??-1)-(a.price??-1));
+  });
+  items=(append?items.concat(novos):novos)
+        .sort((a,b)=>(b.price??-1)-(a.price??-1))
+        .map((x,k)=>({...x,i:k}));
+  loadedCount+=list.length;
+  lastPageFull=(list.length>=PAGE_LIMIT);
   draw();
 }
 
@@ -468,6 +479,7 @@ function draw(){
       <b class="disc-out" id="discOut">${discText(tot)}</b>
     </div>
     <button class="btn-ghost" id="copyBtn" style="width:100%;margin-top:9px;">Copiar resumo</button>
+    ${(lastPageFull)?`<button class="btn-ghost" id="moreBtn" style="width:100%;margin-top:9px;color:var(--gold);border-color:var(--gold-dim);">Podem faltar itens — carregar mais (gasta 1 consulta)</button>`:''}
     ${!rates.BRL?`<div class="warn">Não consegui buscar a cotação do dia — os valores em real e yuan estão indisponíveis. Consulte de novo em instantes.</div>`:''}
     ${none?`<div class="warn">${none} ${none===1?'item selecionado está':'itens selecionados estão'} sem preço e não ${none===1?'entra':'entram'} no total.</div>`:''}
   </div>`;
@@ -521,6 +533,27 @@ function draw(){
       if(o) o.textContent=discText(tot);
     };
   }
+  const mb=$('moreBtn');
+  if(mb){
+    mb.onclick=async()=>{
+      mb.disabled=true;
+      mb.textContent='Buscando próxima página…';
+      try{
+        const inv=await getInv(currentSteamId,loadedCount);
+        if(!inv||!inv.length){
+          mb.textContent='Não há mais itens';
+          lastPageFull=false;
+          return;
+        }
+        build(inv,true);
+      }catch(e){
+        mb.disabled=false;
+        mb.textContent='Carregar mais (gasta 1 consulta)';
+        showErr(e.message||'Não consegui carregar a próxima página.');
+      }
+    };
+  }
+
   const cb=$('copyBtn');
   if(cb){
     cb.onclick=async()=>{
@@ -644,6 +677,41 @@ function buildSummary(sel,tot){
   return head+'\n'+hoje+'\n\n'+linhas+'\n\n'+rodape;
 }
 
+/* ---------- preços de adesivos (sob demanda, com cache) ---------- */
+// Mude para true quando o plano permitir mais consultas (ex.: Inventory Small,
+// 5.000/dia). Adesivos repetidos gastam apenas uma busca e reaproveitam o preço.
+const STICKER_PRICES=false;
+
+const STK_CACHE='swa_stk_cache';
+function stkCache(){
+  try{ return JSON.parse(localStorage.getItem(STK_CACHE)||'{}'); }catch(e){ return {}; }
+}
+function stkCacheSet(obj){
+  try{ localStorage.setItem(STK_CACHE,JSON.stringify(obj)); }catch(e){}
+}
+// A API já entrega o markethashname pronto; a conversão é só reserva
+function stickerHashName(s){
+  if(s.markethashname) return s.markethashname;
+  if(s.market_hash_name) return s.market_hash_name;
+  return stickerLabel(s).replace(/^Sticker:\s*/,'Sticker | ')
+                        .replace(/^Adesivo:\s*/,'Sticker | ');
+}
+async function fetchStickerPrice(hashName){
+  const u=`https://www.steamwebapi.com/steam/api/item?key=${encodeURIComponent(apiKey)}`
+        +`&market_hash_name=${encodeURIComponent(hashName)}&markets=${market}&production=1`;
+  const r=await fetch(u);
+  if(r.status===429) throw new Error('LIMITE');
+  if(!r.ok) throw new Error('ERRO '+r.status);
+  const d=await r.json();
+  const it=Array.isArray(d)?d[0]:d;
+  const cand=[it?.pricereal,it?.pricelatest,it?.pricemedian,it?.pricemix];
+  for(const c of cand){
+    if(typeof c==='number') return c;
+    if(typeof c==='string'&&!isNaN(parseFloat(c))) return parseFloat(c);
+  }
+  return null;
+}
+
 /* ---------- modal de adesivos ---------- */
 function stickerLabel(s){
   return s.name||s.markethashname||s.market_hash_name||'Adesivo';
@@ -670,47 +738,102 @@ function stickerWear(s){
       return c<=1?c*100:c;
     }
   }
-  return null;
+  // O CS2 só grava o desgaste quando o adesivo foi raspado.
+  // Campo ausente = adesivo intacto (0%).
+  return 0;
 }
 
 function openStickers(it){
-  const rows=it.stickers.map(s=>{
-    const p=stickerPrice(s);
-    const w=stickerWear(s);
-    const img=stickerImg(s);
-    const priceHtml=p!==null
-      ? (rates.BRL?brl(p*rates.BRL):usd(p))
-      : '<span style="color:var(--muted);font-weight:400">sem preço</span>';
-    const wearHtml=w!==null
-      ? `<div class="stk-wear">desgaste ${w.toFixed(1)}%</div>`
-      : '';
-    return `<div class="stk-row">
-      ${img?`<img src="${esc(img)}" onerror="this.style.visibility='hidden'">`:''}
-      <div class="nm2">${esc(stickerLabel(s))}${wearHtml}</div>
-      <div class="pr2">${priceHtml}</div>
-    </div>`;
-  }).join('');
-
-  const known=it.stickers.map(stickerPrice).filter(p=>p!==null);
-  const total=known.reduce((a,b)=>a+b,0);
-  const totalHtml=known.length
-    ? `Total dos adesivos: <b>${rates.BRL?brl(total*rates.BRL):usd(total)}</b>${known.length<it.stickers.length?` <span style="color:var(--muted)">(${it.stickers.length-known.length} sem preço)</span>`:''}`
-    : `Nenhum adesivo com preço disponível.`;
-
   const wrap=document.createElement('div');
   wrap.className='stk-overlay';
-  wrap.innerHTML=`<div class="stk-sheet">
-    <div class="stk-head">
-      <div class="stk-title">Adesivos</div>
-      <button class="stk-x" id="stkClose">✕</button>
-    </div>
-    <div class="stk-item-name">${esc(it.name)}</div>
-    <div class="stk-total">${totalHtml}</div>
-    <div class="stk-list">${rows}</div>
-  </div>`;
   document.body.appendChild(wrap);
   const close=()=>wrap.remove();
-  wrap.querySelector('#stkClose').onclick=close;
+
+  function render(){
+    const cache=stkCache();
+    const rows=it.stickers.map(s=>{
+      const hn=stickerHashName(s);
+      const c=cache[hn];
+      const p=(c&&typeof c.price==='number')?c.price:stickerPrice(s);
+      const w=stickerWear(s);
+      const img=stickerImg(s);
+      let priceHtml='';
+      if(STICKER_PRICES){
+        priceHtml=(p!==null&&p!==undefined)
+          ? (rates.BRL?brl(p*rates.BRL):usd(p))
+          : (c&&c.price===null
+              ? '<span style="color:var(--muted);font-weight:400">sem cotação</span>'
+              : '<span style="color:var(--muted);font-weight:400">—</span>');
+      }
+      return `<div class="stk-row">
+        ${img?`<img src="${esc(img)}" onerror="this.style.visibility='hidden'">`:''}
+        <div class="nm2">${esc(stickerLabel(s))}${w!==null?`<div class="stk-wear">${w===0?'intacto':'raspado '+w.toFixed(1)+'%'}</div>`:''}</div>
+        ${priceHtml?`<div class="pr2">${priceHtml}</div>`:''}
+      </div>`;
+    }).join('');
+
+    let topo='', btn='';
+    if(STICKER_PRICES){
+      const precos=it.stickers.map(s=>{
+        const c=cache[stickerHashName(s)];
+        return (c&&typeof c.price==='number')?c.price:stickerPrice(s);
+      }).filter(p=>typeof p==='number');
+      const total=precos.reduce((a,b)=>a+b,0);
+      const faltam=[...new Set(it.stickers.map(stickerHashName))]
+        .filter(hn=>!(hn in cache));
+      topo=precos.length
+        ? `Total: <b>${rates.BRL?brl(total*rates.BRL):usd(total)}</b>`
+          +(precos.length<it.stickers.length?` <span style="color:var(--muted)">(${it.stickers.length-precos.length} sem preço)</span>`:'')
+        : `Preços ainda não buscados.`;
+      btn=faltam.length
+        ? `<button class="btn-ghost" id="stkFetch" style="width:100%;margin-top:11px;">Buscar preços — gasta ${faltam.length} consulta${faltam.length>1?'s':''}</button>`
+        : '';
+      wrap._faltam=faltam;
+    }else{
+      const n=it.stickers.length;
+      topo=`${n} adesivo${n>1?'s':''} — consulte o valor manualmente.`;
+    }
+
+    wrap.innerHTML=`<div class="stk-sheet">
+      <div class="stk-head">
+        <div class="stk-title">Adesivos</div>
+        <button class="stk-x" id="stkClose">✕</button>
+      </div>
+      <div class="stk-item-name">${esc(it.name)}</div>
+      <div class="stk-total">${topo}</div>
+      <div class="stk-list">${rows}</div>
+      ${btn}
+    </div>`;
+
+    wrap.querySelector('#stkClose').onclick=close;
+    const fb=wrap.querySelector('#stkFetch');
+    if(fb) fb.onclick=()=>buscar(wrap._faltam,fb);
+  }
+
+  async function buscar(lista,btn){
+    btn.disabled=true;
+    const cache=stkCache();
+    for(let i=0;i<lista.length;i++){
+      btn.textContent=`Buscando ${i+1} de ${lista.length}…`;
+      try{
+        const p=await fetchStickerPrice(lista[i]);
+        cache[lista[i]]={price:p,at:Date.now()};
+        stkCacheSet(cache);
+      }catch(e){
+        if(e.message==='LIMITE'){
+          btn.textContent='Limite da API atingido — tente mais tarde';
+          stkCacheSet(cache);
+          return;
+        }
+        cache[lista[i]]={price:null,at:Date.now()};
+        stkCacheSet(cache);
+      }
+      if(i<lista.length-1) await new Promise(r=>setTimeout(r,7000)); // respeita o limite por minuto
+    }
+    render();
+  }
+
+  render();
   wrap.onclick=e=>{ if(e.target===wrap) close(); };
 }
 </script>
